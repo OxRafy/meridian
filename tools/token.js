@@ -57,20 +57,27 @@ export async function getTokenInfo({ query }) {
  * Fetches top 100 holders — caller decides how many to display.
  */
 export async function getTokenHolders({ mint, limit = 20 }) {
-  const url = `${DATAPI_BASE}/holders/${mint}?limit=100`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Holders API error: ${res.status}`);
-  const data = await res.json();
+  // Fetch holders and total supply in parallel
+  const [holdersRes, tokenRes] = await Promise.all([
+    fetch(`${DATAPI_BASE}/holders/${mint}?limit=100`),
+    fetch(`${DATAPI_BASE}/assets/search?query=${mint}`),
+  ]);
+  if (!holdersRes.ok) throw new Error(`Holders API error: ${holdersRes.status}`);
+  const data = await holdersRes.json();
+  const tokenData = tokenRes.ok ? await tokenRes.json() : null;
+  const tokenInfo = Array.isArray(tokenData) ? tokenData[0] : tokenData;
+  const totalSupply = tokenInfo?.totalSupply || tokenInfo?.circSupply || null;
 
   const holders = Array.isArray(data) ? data : (data.holders || data.data || []);
 
   const mapped = holders.slice(0, Math.min(limit, 100)).map((h) => {
     const tags = (h.tags || []).map((t) => t.name || t.id || t);
     const isPool = tags.some((t) => /pool|amm|liquidity|raydium|orca|meteora/i.test(t));
+    const pct = totalSupply ? (Number(h.amount) / totalSupply) * 100 : (h.percentage ?? h.pct ?? null);
     return {
       address: h.address || h.wallet,
       amount: h.amount,
-      pct: h.percentage ?? h.pct,
+      pct: pct != null ? parseFloat(pct.toFixed(4)) : null,
       sol_balance: h.solBalanceDisplay ?? h.solBalance,
       tags: tags.length ? tags : undefined,
       is_pool: isPool || undefined,
