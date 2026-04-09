@@ -1,5 +1,5 @@
-import OpenAI from "openai";
 import { jsonrepair } from "jsonrepair";
+import { createMultiLLM } from "./tools/llm-adapter/index.js";
 import { buildSystemPrompt } from "./prompt.js";
 import { executeTool } from "./tools/executor.js";
 import { tools } from "./tools/definitions.js";
@@ -96,7 +96,23 @@ const client = new OpenAI({
   timeout: 5 * 60 * 1000,
 });
 
-const DEFAULT_MODEL = process.env.LLM_MODEL || "openrouter/healer-alpha";
+
+// - Multi-Provider LLM Client -
+// Initialize with configured providers, supports failover and load balancing
+const multiLLM = createMultiLLM({
+  defaultModel: config.llm.defaultModel,
+  fallbackModel: config.llm.fallbackModel,
+  maxRetries: config.llm.maxRetries,
+});
+
+// Legacy OpenAI client for backward compatibility (falls back to multiLLM default provider)
+const legacyClient = new OpenAI({
+  baseURL: process.env.LLM_BASE_URL || "https://openrouter.ai/api/v1",
+  apiKey: process.env.LLM_API_KEY || process.env.OPENROUTER_API_KEY,
+  timeout: 5 * 60 * 1000,
+});
+
+const DEFAULT_MODEL = process.env.LLM_MODEL || config.llm.defaultModel;
 
 const TOOL_REQUIRED_INTENTS = /\b(deploy|open position|open|add liquidity|lp into|invest in|close|exit|withdraw|remove liquidity|claim|harvest|collect|swap|convert|sell|exchange|block|unblock|blacklist|self.?update|pull latest|git pull|update yourself|config|setting|threshold|set |change|update |balance|wallet|position|portfolio|pnl|yield|range|screen|candidate|find pool|search|research|token|smart wallet|whale|watch.?list|tracked wallet|study top|top lpers?|lp behavior|who.?s lping|performance|history|stats|report|lesson|learned|teach|pin|unpin)\b/i;
 
@@ -180,7 +196,7 @@ export async function agentLoop(goal, maxSteps = config.llm.maxSteps, sessionHis
 
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          response = await client.chat.completions.create({
+          response = await multiLLM.chat({
             model: usedModel,
             messages,
             tools: getToolsForRole(agentType, goal),

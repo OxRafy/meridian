@@ -65,6 +65,17 @@
   "managementModel": "minimax/minimax-m2.5",
   "screeningModel": "minimax/minimax-m2.5",
   "generalModel": "minimax/minimax-m2.7",
+  "defaultModel": "minimax/minimax-m2.7",
+  "fallbackModel": "stepfun/step-3.5-flash:free",
+  "maxRetries": 3,
+  "providers": [
+    {
+      "type": "openrouter",
+      "name": "primary",
+      "model": "minimax/minimax-m2.7",
+      "apiKey": "your_openrouter_api_key_here"
+    }
+  ],
 
   "darwinEnabled": true,
   "darwinWindowDays": 60,

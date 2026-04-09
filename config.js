@@ -87,14 +87,55 @@ export const config = {
     healthCheckIntervalMin: u.healthCheckIntervalMin ?? 60,
   },
 
-  // ─── LLM Settings ──────────────────────
+  // - LLM Settings -
   llm: {
     temperature: u.temperature ?? 0.373,
     maxTokens:   u.maxTokens   ?? 4096,
     maxSteps:    u.maxSteps    ?? 20,
-    managementModel: u.managementModel ?? process.env.LLM_MODEL ?? "openrouter/healer-alpha",
-    screeningModel:  u.screeningModel  ?? process.env.LLM_MODEL ?? "openrouter/hunter-alpha",
-    generalModel:    u.generalModel    ?? process.env.LLM_MODEL ?? "openrouter/healer-alpha",
+    
+    // - Multi-Provider Configuration -
+    providers: u.providers ?? [
+      {
+        type: "openrouter",
+        name: "primary",
+        model: "openrouter/healer-alpha",
+        apiKey: process.env.OPENROUTER_API_KEY,
+        fallbackModel: "stepfun/step-3.5-flash:free",
+      },
+      // Add more providers here:
+      // {
+      //   type: "openai",
+      //   name: "backup",
+      //   model: "openai/gpt-4o",
+      //   apiKey: process.env.OPENAI_API_KEY,
+      // },
+      // {
+      //   type: "anthropic",
+      //   name: "premium",
+      //   model: "anthropic/claude-3.5-sonnet",
+      //   apiKey: process.env.ANTHROPIC_API_KEY,
+      // },
+      // {
+      //   type: "ollama",
+      //   name: "local",
+      //   model: "ollama/llama3",
+      //   baseURL: "http://localhost:11434/v1",
+      // },
+    ],
+    defaultModel: u.defaultModel ?? "openrouter/healer-alpha",
+    fallbackModel: u.fallbackModel ?? "stepfun/step-3.5-flash:free",
+    maxRetries: u.maxRetries ?? 3,
+    
+    // - Per-Role Model Selection -
+    managementModel: u.managementModel ?? process.env.LLM_MODEL ?? "auto",
+    screeningModel:  u.screeningModel  ?? process.env.LLM_MODEL ?? "auto",
+    generalModel:    u.generalModel    ?? process.env.LLM_MODEL ?? "auto",
+    
+    // - Provider Routing Mode -
+    // "round-robin": Rotate through available providers
+    // "smart":       Choose based on cost/latency (future)
+    // "preferred":   Always use preferred provider, fallback if unavailable
+    routingMode: u.routingMode ?? "round-robin",
   },
 
   // ─── Common Token Mints ────────────────
